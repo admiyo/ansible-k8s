@@ -1,0 +1,13 @@
+---
+- hosts: all
+  remote_user: ansible
+  sudo: yes
+  roles:
+  -  node
+
+- hosts: master
+  remote_user: ansible
+  sudo: yes
+  roles:
+  - master
+

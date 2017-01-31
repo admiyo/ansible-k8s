@@ -1,0 +1,60 @@
+---
+- name: ensure rpms are at the latest version
+  package: name={{ item }} state=latest
+  with_items:
+  - etcd
+  - kubernetes
+  - python-firewall
+
+- name: configure k8s master listening port
+  lineinfile:
+    dest: /etc/kubernetes/apiserver
+    regexp: "^KUBE_API_ADDRESS="
+    line: KUBE_API_ADDRESS="--address=0.0.0.0"
+    state: present
+  register: k8sconf
+
+
+- name: configure etcd  master listening host
+  lineinfile:
+    dest: /etc/etcd/etcd.conf 
+    regexp: "^ETCD_LISTEN_CLIENT_URLS="
+    line: ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:2379"
+    state: present
+  register: etcdconf
+
+
+- firewalld:
+    port: 8080/tcp
+    permanent: true
+    state: enabled
+
+
+- name: start the kubernetes API server
+  service:
+    name: "{{ item }}"
+    state: restarted
+  with_items:
+    - etcd
+  when: etcdconf.changed
+  
+- name: start the kubernetes API server
+  service:
+    name: "{{ item }}"
+    state: restarted
+  with_items:
+    - kube-apiserver
+    - kube-controller-manager
+    - kube-scheduler
+  when: k8sconf.changed
+
+- name: ensure the kubernetes services were started 
+  service:
+    name: "{{ item }}"
+    enabled: yes
+    state: started
+  with_items:
+    - kube-apiserver
+    - kube-controller-manager
+    - kube-scheduler
+    - etcd

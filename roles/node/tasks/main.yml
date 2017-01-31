@@ -1,0 +1,18 @@
+---
+- name: ensure kubernetes  is at the latest version
+  package: name=kubernetes-node state=latest
+
+- name: Make sure we can manage SELinux changes for lineinfile
+  package: name=libselinux-python state=latest
+
+
+
+- name: Add master and node to /etc/hosts on all machines
+  lineinfile:
+    dest: /etc/hosts
+    line: "{{ item.ip }} {{ item.name }} {{ item.name }}.home.younglogic.net"
+  with_items:
+    - {ip: '10.0.0.30', name: 'munchlax'}
+    - {ip: '10.0.0.3',  name: 'dialga'  }
+
+
