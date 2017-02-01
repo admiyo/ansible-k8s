@@ -2,10 +2,10 @@
     "apiVersion": "v1",
     "kind": "Node",
     "metadata": {
-        "name": "fed-node",
-        "labels":{ "name": "fed-node-label"}
+        "name": "{{ inventory_hostname }}",
+        "labels":{ "name": "{{ inventory_hostname }}-label"}
     },
     "spec": {
-        "externalID": "fed-node"
+        "externalID": "{{ inventory_hostname }}"
     }
 }

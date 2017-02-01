@@ -5,14 +5,87 @@
 - name: Make sure we can manage SELinux changes for lineinfile
   package: name=libselinux-python state=latest
 
+# Node creation is done on the master
 
+- name: check if node has been created
+  command: kubectl get nodes {{ inventory_hostname }}
+  register: node_exists
+  ignore_errors: yes
+  delegate_to: munchlax
+
+- name: generate node file
+  template:
+    src: templates/node.json.js
+    dest: /tmp/node-{{ inventory_hostname }}.json
+  delegate_to: munchlax
+  when: node_exists|failed
+
+- name: create ansible node entry
+  command: kubectl create -f /tmp/node-{{ inventory_hostname }}.json
+  delegate_to: munchlax
+  when: node_exists|failed
+   
+# The next two targets work together to ensure that the /etc/hosts file has
+# an entry for all hosts in the cluster
+
+- name: gather facts from all servers
+  setup:
+  delegate_to: "{{item}}"
+  delegate_facts: True
+  with_items: "{{ groups['all'] }}"
 
 - name: Add master and node to /etc/hosts on all machines
   lineinfile:
     dest: /etc/hosts
-    line: "{{ item.ip }} {{ item.name }} {{ item.name }}.home.younglogic.net"
+    line: >-
+        {{ hostvars[item].ansible_default_ipv4.address }}
+        {{ item }} {{ item }}.home.younglogic.net
+  with_items: "{{ groups.all }}"
+
+
+- name: configure kubelete addrees
+  lineinfile:
+    dest: /etc/kubernetes/kubelet
+    regexp: "^KUBELET_ADDRESS="
+    line: KUBELET_ADDRESS="--address=0.0.0.0"
+    state: present
+  register: kubeletaddr
+
+- name: configure kubelete hostname
+  lineinfile:
+    dest: /etc/kubernetes/kubelet
+    regexp: "^KUBELET_HOSTNAME="  
+    line: KUBELET_HOSTNAME="--hostname-override={{ inventory_hostname }}"
+    state: present
+  register: kubelethostname
+
+
+- name: configure kubelete hostname
+  lineinfile:
+    dest: /etc/kubernetes/kubelet
+    regexp: "^KUBELET_API_SERVER="  
+    line: KUBELET_API_SERVER="--hostname-override=http://munchlax:8080"
+    state: present
+  register: kubeleapi
+
+
+- name: restart the node services if required
+  service:
+    name: "{{ item }}"
+    state: restarted
   with_items:
-    - {ip: '10.0.0.30', name: 'munchlax'}
-    - {ip: '10.0.0.3',  name: 'dialga'  }
+    - kube-proxy
+    - kubelet
+    - docker
+  when: kubeletaddr.changed or  kubelethostname.changed or  kubeleapi.changed
 
 
+- name: start the node services
+  service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - kube-proxy
+    - kubelet
+    - docker

@@ -1,10 +1,5 @@
 ---
 
-- hosts: master
-  remote_user: ansible
-  sudo: yes
-  roles:
-  - master
 
 - hosts: all
   remote_user: ansible
