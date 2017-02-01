@@ -4,26 +4,6 @@
 
 - name: Make sure we can manage SELinux changes for lineinfile
   package: name=libselinux-python state=latest
-
-# Node creation is done on the master
-
-- name: check if node has been created
-  command: kubectl get nodes {{ inventory_hostname }}
-  register: node_exists
-  ignore_errors: yes
-  delegate_to: munchlax
-
-- name: generate node file
-  template:
-    src: templates/node.json.js
-    dest: /tmp/node-{{ inventory_hostname }}.json
-  delegate_to: munchlax
-  when: node_exists|failed
-
-- name: create ansible node entry
-  command: kubectl create -f /tmp/node-{{ inventory_hostname }}.json
-  delegate_to: munchlax
-  when: node_exists|failed
    
 # The next two targets work together to ensure that the /etc/hosts file has
 # an entry for all hosts in the cluster
@@ -41,6 +21,16 @@
         {{ hostvars[item].ansible_default_ipv4.address }}
         {{ item }} {{ item }}.home.younglogic.net
   with_items: "{{ groups.all }}"
+
+
+- firewalld:
+    port: "{{ item }}/tcp"
+    permanent: true
+    state: enabled
+  with_items:
+  - 4194
+  - 10250
+  - 10255
 
 
 - name: configure kubelete addrees
@@ -64,7 +54,7 @@
   lineinfile:
     dest: /etc/kubernetes/kubelet
     regexp: "^KUBELET_API_SERVER="  
-    line: KUBELET_API_SERVER="--hostname-override=http://munchlax:8080"
+    line: KUBELET_API_SERVER="--api-servers=http://munchlax:8080"
     state: present
   register: kubeleapi
 

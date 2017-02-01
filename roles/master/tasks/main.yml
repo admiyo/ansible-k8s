@@ -23,12 +23,13 @@
     state: present
   register: etcdconf
 
-
 - firewalld:
-    port: 8080/tcp
+    port: "{{ item }}/tcp"
     permanent: true
     state: enabled
-
+  with_items:
+  - 8080
+  - 6443
 
 - name: start the kubernetes API server
   service:
