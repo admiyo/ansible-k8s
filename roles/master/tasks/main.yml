@@ -1,4 +1,7 @@
 ---
+# Ansibilization of master side of
+# https://kubernetes.io/docs/getting-started-guides/fedora/fedora_manual_config/
+
 - name: ensure rpms are at the latest version
   package: name={{ item }} state=latest
   with_items:
@@ -6,14 +9,24 @@
   - kubernetes
   - python-firewall
 
-- name: configure k8s master listening port
+#TODO: Restore admission control to this line:
+#'"--admission-control=NamespaceLifecycle,NamespaceExists,SecurityContextDeny,ServiceAccount,LimitRanger,ResourceQuota"'}
+
+- name: configure k8s api server
   lineinfile:
     dest: /etc/kubernetes/apiserver
-    regexp: "^KUBE_API_ADDRESS="
-    line: KUBE_API_ADDRESS="--address=0.0.0.0"
+    regexp: "^{{ item.key }}="
+    line:  "{{ item.key }}={{ item.line }}"
     state: present
-  register: k8sconf
-
+  register: k8s_conf
+  with_items:
+    - {key: 'KUBE_ADMISSION_CONTROL',
+       line: '"--admission-control=NamespaceLifecycle,NamespaceExists,SecurityContextDeny,LimitRanger,ResourceQuota"'}
+    - {key: 'KUBE_API_ADDRESS', line: '"--address=0.0.0.0"'}
+    - {key: "KUBE_API_ARGS", line: '"--service-account-key-file=/etc/kubernetes/serviceaccount.key"'}
+ 
+- name: generate key for master
+  command: openssl genrsa -out /etc/kubernetes/serviceaccount.key 2048
 
 - name: configure etcd  master listening host
   lineinfile:
@@ -31,7 +44,7 @@
   - 8080
   - 6443
 
-- name: start the kubernetes API server
+- name: start the etcd server
   service:
     name: "{{ item }}"
     state: restarted
@@ -47,7 +60,7 @@
     - kube-apiserver
     - kube-controller-manager
     - kube-scheduler
-  when: k8sconf.changed
+  when: k8s_conf.changed
 
 - name: ensure the kubernetes services were started 
   service:
