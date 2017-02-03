@@ -17,6 +17,7 @@
 - name: Add master and node to /etc/hosts on all machines
   lineinfile:
     dest: /etc/hosts
+    regexp: "^{{ hostvars[item].ansible_default_ipv4.address }}"
     line: >-
         {{ hostvars[item].ansible_default_ipv4.address }}
         {{ item }} {{ item }}.home.younglogic.net
