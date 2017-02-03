@@ -1,0 +1,36 @@
+---
+
+# Ansibilzation of the instructions
+# https://fedoraproject.org/wiki/Scsi-target-utils_Quickstart_Guide
+
+
+- name: install iscsi-initiator-utils
+  package: name=iscsi-initiator-utils state=latest
+
+
+- name: ensure the iSCSI service is started 
+  service:
+    name: iscsi 
+    enabled: yes
+    state: started
+
+
+#- name: configure iSCSI initiator
+#  lineinfile:
+#    dest: /etc/iscsi/initiatorname.iscsi 
+#    regexp: "^InitiatorName="
+#    line: InitiatorName=iqn.2009-02.com.younglogic:for.all
+#    state: present
+#  register: iscsiinit
+
+
+- name: run iscsi_discovery
+  command: iscsiadm -m discovery -t  sendtargets  -p munchlax:3260
+  register: iscsi_volumes
+
+- name: login to iSCSI Target
+  command: iscsiadm --mode node --targetname iqn.2009-02.com.younglogic:for.all --portal 10.0.0.30:3260,1 --login
+
+
+- name:  set node.startup to manual.
+  command: iscsiadm --mode node --targetname iqn.2009-02.com.younglogic:for.all --portal 10.0.0.30:3260,1 -o update -n node.startup -v manual

@@ -1,0 +1,3 @@
+---
+iscsi_target: iqn.2009-02.com.younglogic:for.all
+subnet: 10.10.0.0/24

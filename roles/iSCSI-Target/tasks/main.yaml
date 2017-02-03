@@ -38,20 +38,23 @@
 
 - name: register active targets
   command:  tgtadm --lld iscsi --mode target --op show
-  register: iscsitargets
+  register: iscsi_targets
 
-#TODO change initiator name to a variable
 - name: create target device
-  command: tgtadm --lld iscsi --mode target --op new --tid=1 --targetname iqn.2009-02.com.younglogic:for.all 
-  when:  "'iqn.2009-02.com.younglogic:for.all' not in iscsitargets.stdout"
+  command: tgtadm --lld iscsi --mode target --op new --tid=1 --targetname {{ iscsi_target }} 
+  when:  "'{{ iscsi_target }}' not in iscsi_targets.stdout"
 
 
 - name: add a logical unit
   command: tgtadm --lld iscsi --mode logicalunit --op new --tid 1 --lun 1 -b /var/tmp/iscsi-disk1
-  when:  "'LUN: 1' not in iscsitargets.stdout"
+  when:  "'LUN: 1' not in iscsi_targets.stdout"
 
 
 #TODO make this more targetted to the registered nodes
 - name: Restrict access to the local subnet
-  command: tgtadm --lld iscsi --mode target --op bind --tid 1 -I 10.10.0.0/24
-  when:  "'10.10.0.0/24' not in iscsitargets.stdout"
+  command: tgtadm --lld iscsi --mode target --op bind --tid 1 -I {{ subnet }}
+  when:  "'{{ subnet }}' not in iscsi_targets.stdout"
+
+- name: Restrict access to the local subnet
+  command: tgtadm --lld iscsi --op bind --mode target --tid 1 -I ALL
+  when:  "'ALL' not in iscsi_targets.stdout"
