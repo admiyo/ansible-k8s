@@ -2,5 +2,7 @@
 iscsi_target: iqn.2009-02.com.younglogic:for.all
 iscsi_host: munchlax
 iscsi_target_port: 3260
+iscsi_portal_host: 10.0.0.30
 subnet: 10.10.0.0/24
-
+iscsi_server: "{{ iscsi_portal_host }}:{{ iscsi_target_port }}"
+iscsi_portal: "{{ iscsi_server }},1"

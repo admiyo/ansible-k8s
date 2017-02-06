@@ -60,6 +60,16 @@
   register: kubeleapi
 
 
+- name: configure kubelete hostname
+  lineinfile:
+    dest: /etc/kubernetes/config
+    regexp: "^KUBELET_API_SERVER="  
+    line: KUBELET_API_SERVER="--api-servers=http://munchlax:8080"
+    state: present
+  register: kubeleapi
+
+
+
 - name: restart the node services if required
   service:
     name: "{{ item }}"

@@ -1,0 +1,35 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: keystonedb
+spec:
+  containers:
+    - resources:
+        limits :
+          cpu: 0.5
+      image: mysql
+      name: mysql
+      args:
+        - "--ignore-db-dir"
+        - "lost+found"
+      env:
+        - name: MYSQL_ROOT_PASSWORD
+          # change this
+          value: yourpassword
+      ports:
+        - containerPort: 3306
+          name: mysql
+      volumeMounts:
+          # name must match the volume name below
+        - name: mysql-persistent-storage
+          # mount path within the container
+          mountPath: /var/lib/mysql
+  volumes:
+  - name: mysql-persistent-storage
+    iscsi:
+      targetPortal: 10.0.0.30:3260
+      iqn: iqn.2009-02.com.younglogic:for.all
+      lun: 1
+      fsType: ext4
+      readOnly: false
