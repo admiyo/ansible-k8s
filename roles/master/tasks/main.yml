@@ -8,6 +8,7 @@
   - etcd
   - kubernetes
   - python-firewall
+  - skydns
 
 #TODO: Restore admission control to this line:
 #'"--admission-control=NamespaceLifecycle,NamespaceExists,SecurityContextDeny,ServiceAccount,LimitRanger,ResourceQuota"'}
@@ -43,6 +44,7 @@
   with_items:
   - 8080
   - 6443
+  - 53
 
 - name: start the etcd server
   service:
@@ -72,3 +74,4 @@
     - kube-controller-manager
     - kube-scheduler
     - etcd
+    - skydns

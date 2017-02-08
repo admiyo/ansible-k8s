@@ -5,25 +5,6 @@
 - name: Make sure we can manage SELinux changes for lineinfile
   package: name=libselinux-python state=latest
    
-# The next two targets work together to ensure that the /etc/hosts file has
-# an entry for all hosts in the cluster
-
-- name: gather facts from all servers
-  setup:
-  delegate_to: "{{item}}"
-  delegate_facts: True
-  with_items: "{{ groups['all'] }}"
-
-- name: Add master and node to /etc/hosts on all machines
-  lineinfile:
-    dest: /etc/hosts
-    regexp: "^{{ hostvars[item].ansible_default_ipv4.address }}"
-    line: >-
-        {{ hostvars[item].ansible_default_ipv4.address }}
-        {{ item }} {{ item }}.home.younglogic.net
-  with_items: "{{ groups.all }}"
-
-
 - firewalld:
     port: "{{ item }}/tcp"
     permanent: true
@@ -69,7 +50,6 @@
   register: kubeleapi
 
 
-
 - name: restart the node services if required
   service:
     name: "{{ item }}"
@@ -77,8 +57,24 @@
   with_items:
     - kube-proxy
     - kubelet
-    - docker
   when: kubeletaddr.changed or  kubelethostname.changed or  kubeleapi.changed
+
+
+- name: configure docker to allow insecure registry access
+  lineinfile:
+    dest: /etc/sysconfig/docker
+    regexp: "^INSECURE_REGISTRY="  
+    line: INSECURE_REGISTRY='--insecure-registry  munchlax:5000'
+    state: present
+  register: dockerinsecure
+
+- name: restart the node services if required
+  service:
+    name: "{{ item }}"
+    state: restarted
+  with_items:
+    - docker
+  when:  dockerinsecure.changed
 
 
 - name: start the node services

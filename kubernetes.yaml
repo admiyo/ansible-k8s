@@ -1,5 +1,26 @@
 ---
 
+# cannnot be a role, since the setup call must be done for all hosts prior
+# to the generation of lines for the hosts file.
+
+- hosts: all
+  remote_user: ansible
+  sudo: yes
+  tasks:
+  - setup:
+
+- hosts: all
+  remote_user: ansible
+  sudo: yes
+  tasks:
+  - name: nodes to /etc/hosts on all machines
+    lineinfile:
+      dest: /etc/hosts
+      line: >-
+        {{ hostvars[item].ansible_default_ipv4.address }}
+        {{ item }} {{ item }}.home.younglogic.net
+    with_items: "{{ groups.all }}"
+
 - hosts: master
   remote_user: ansible
   sudo: yes
