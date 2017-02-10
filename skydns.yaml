@@ -1,0 +1,11 @@
+---
+
+# cannnot be a role, since the setup call must be done for all hosts prior
+# to the generation of lines for the hosts file.
+
+
+- hosts: master
+  remote_user: ansible
+  sudo: yes
+  roles:
+  - skydns

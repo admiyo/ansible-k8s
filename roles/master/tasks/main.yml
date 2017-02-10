@@ -53,7 +53,8 @@
   with_items:
     - etcd
   when: etcdconf.changed
-  
+
+
 - name: start the kubernetes API server
   service:
     name: "{{ item }}"
@@ -74,4 +75,6 @@
     - kube-controller-manager
     - kube-scheduler
     - etcd
-    - skydns
+
+
+

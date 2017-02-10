@@ -1,0 +1,45 @@
+- name: configure skydns
+  lineinfile:
+    dest: /etc/skydns/skydns.conf 
+    regexp: "^ETCD_MACHINES="
+    line: ETCD_MACHINES="http://0.0.0.0:2379"
+    state: present
+  register: skydnsconf
+
+
+- name: restart the skydns server
+  service:
+    name: "{{ item }}"
+    state: restarted
+  with_items:
+    - etcd
+  when: skydnsconf.changed
+
+
+- name: default nameserver for skydns
+  uri:
+    url: http://127.0.0.1:2379/v2/keys/skydns/local/skydns/dns/ns/ns1
+    body: value='{"host":"75.75.75.75"}'
+    method: PUT
+    status_code: 200,201
+
+- name: default nameservers for skydns
+  uri:
+    url: http://127.0.0.1:2379/v2/keys/skydns/config
+    body: "{{ lookup('template','roles/skydns/templates/nameserver.json.j2') }}"
+    body_format: json
+    method: PUT
+    status_code: 200,201
+
+- debug:
+    msg: "{{ lookup('template','roles/skydns/templates/nameserver.json.j2') }}"
+
+
+- name: ensure the kubernetes services were started 
+  service:
+    name: "{{ item }}"
+    enabled: yes
+    state: started
+  with_items:
+    - skydns
+
