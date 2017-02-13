@@ -14,40 +14,27 @@
   - 10250
   - 10255
 
-
-- name: configure kubelete addrees
+- name: configure k8s api server
   lineinfile:
     dest: /etc/kubernetes/kubelet
-    regexp: "^KUBELET_ADDRESS="
-    line: KUBELET_ADDRESS="--address=0.0.0.0"
+    regexp: "^{{ item.key }}="
+    line:  "{{ item.key }}={{ item.line }}"
     state: present
-  register: kubeletaddr
+  register: kubelet_conf
+  with_items:
+    - {key: 'KUBELET_ADDRESS',
+       line: '"--address=0.0.0.0"'}
+    - {key: 'KUBELET_HOSTNAME', line: '"--hostname-override={{ inventory_hostname }}"'}
+    - {key: "KUBELET_API_SERVER", line: '"--api-servers=http://munchlax:8080"'}
+    - {key: "KUBELET_ARGS", line: '"--cluster_dns=10.10.0.30 --cluster_domain=home.younglogic.net"'}
 
-- name: configure kubelete hostname
-  lineinfile:
-    dest: /etc/kubernetes/kubelet
-    regexp: "^KUBELET_HOSTNAME="  
-    line: KUBELET_HOSTNAME="--hostname-override={{ inventory_hostname }}"
-    state: present
-  register: kubelethostname
-
-
-- name: configure kubelete hostname
-  lineinfile:
-    dest: /etc/kubernetes/kubelet
-    regexp: "^KUBELET_API_SERVER="  
-    line: KUBELET_API_SERVER="--api-servers=http://munchlax:8080"
-    state: present
-  register: kubeleapi
-
-
-- name: configure kubelete hostname
+- name: configure kubernetes API server
   lineinfile:
     dest: /etc/kubernetes/config
     regexp: "^KUBELET_API_SERVER="  
     line: KUBELET_API_SERVER="--api-servers=http://munchlax:8080"
     state: present
-  register: kubeleapi
+  register: kubeapi
 
 
 - name: restart the node services if required
@@ -57,7 +44,7 @@
   with_items:
     - kube-proxy
     - kubelet
-  when: kubeletaddr.changed or  kubelethostname.changed or  kubeleapi.changed
+  when: kubelet_conf.changed or kubeapi.changed
 
 
 - name: configure docker to allow insecure registry access

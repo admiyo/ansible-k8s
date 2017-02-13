@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: skydns
+spec:
+  replicas: 2
+  selector:
+    app: skydns
+  template:
+    metadata:
+      name: skydns
+      labels:
+        app: skydns
+    spec:
+      containers:
+      - name: kube2sky-container
+        image: gcr.io/google_containers/kube2sky:1.11
+        env:
+        - name: ETCD_MACHINES
+          value: "http://{{ skydns_etcd_host }}:2379"
+        - name: SKYDNS_DOMAIN
+          value: "{{ skydns_domain }}"
+        - name: SKYDNS_ADDR
+          value: "0.0.0.0:53"                     
+        - name: SKYDNS_NAMESERVERS
+          value: "{{ skydns_nameservers  }}:53"
+      - name: skydns-container
+        image:  gcr.io/google_containers/skydns:2015-03-11-001
+        env:
+        - name: ETCD_MACHINES
+          value: "http://{{ skydns_etcd_host }}:2379"
+        - name: SKYDNS_DOMAIN
+          value: "{{ skydns_domain }}"
+        - name: SKYDNS_ADDR
+          value: "0.0.0.0:53"                     
+        - name: SKYDNS_NAMESERVERS
+          value: "{{ skydns_nameservers  }}:53"

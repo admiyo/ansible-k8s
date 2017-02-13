@@ -1,19 +1,20 @@
-- name: configure skydns
-  lineinfile:
-    dest: /etc/skydns/skydns.conf 
-    regexp: "^ETCD_MACHINES="
-    line: ETCD_MACHINES="http://0.0.0.0:2379"
-    state: present
-  register: skydnsconf
+- name: copy skydns definition to master
+  template: 
+    src: templates/skydns-k8s.yaml.j2
+    dest: /tmp/skydns-k8s.yaml
+    owner: root
+    group: wheel
+    mode: 0644
+
+- name: check skydns ReplicationController
+  command: kubectl -s http://munchlax:8080 get -f /tmp/skydns-k8s.yaml -o json
+  register: skydns_status
+  ignore_errors: yes
 
 
-- name: restart the skydns server
-  service:
-    name: "{{ item }}"
-    state: restarted
-  with_items:
-    - etcd
-  when: skydnsconf.changed
+- name: create skydns ReplicationController
+  command: kubectl create -f  /tmp/skydns-k8s.yaml
+  when:  skydns_status|failed
 
 
 - name: default nameserver for skydns
@@ -23,23 +24,16 @@
     method: PUT
     status_code: 200,201
 
-- name: default nameservers for skydns
-  uri:
-    url: http://127.0.0.1:2379/v2/keys/skydns/config
-    body: "{{ lookup('template','roles/skydns/templates/nameserver.json.j2') }}"
-    body_format: json
-    method: PUT
-    status_code: 200,201
+# - name: default nameservers for skydns
+#   uri:
+#     url: http://127.0.0.1:2379/v2/keys/skydns/config
+#     body: "{{ lookup('template','roles/skydns/templates/nameserver.json.j2') }}"
+#     body_format: json
+#     method: PUT
+#     status_code: 200,201
 
-- debug:
-    msg: "{{ lookup('template','roles/skydns/templates/nameserver.json.j2') }}"
+# - debug:
+#     msg: "{{ lookup('template','roles/skydns/templates/nameserver.json.j2') }}"
 
 
-- name: ensure the kubernetes services were started 
-  service:
-    name: "{{ item }}"
-    enabled: yes
-    state: started
-  with_items:
-    - skydns
 
