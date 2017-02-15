@@ -26,7 +26,6 @@
   sudo: yes
   roles:
   - master
-  - skydns
 
 - hosts: all
   remote_user: ansible

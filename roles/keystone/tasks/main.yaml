@@ -1,0 +1,93 @@
+---
+
+# Ansiblization of the instructions from
+# https://kubernetes.io/docs/user-guide/persistent-volumes/
+# applied to iSCSI
+
+
+
+- name: check namespace "openstack" exists
+  command: kubectl -s http://munchlax:8080 get namespace openstack -o json
+  register: namespace_status
+  ignore_errors: yes
+
+
+- name: create namespace "openstack"
+  command: kubectl create namespace openstack
+  when:  namespace_status|failed
+
+
+
+- name: copy persistant volume definition to master
+  template: 
+    src: keydb-pv.yaml.j2
+    dest: /tmp/keydb-pv.yaml
+    owner: root
+    group: wheel
+    mode: 0644
+
+- name: check keystone database persistant volume
+  command: kubectl -s http://munchlax:8080 get -f  /tmp/keydb-pv.yaml -o json
+  register: keydbpv_status
+  ignore_errors: yes
+
+
+- name: create persistant volume
+  command: kubectl create -f  /tmp/keydb-pv.yaml
+  when:  keydbpv_status|failed
+
+
+- name: copy persistant volume definition to master
+  template: 
+    src: keydb-claim.yaml.j2
+    dest: /tmp/keydb-claim.yaml
+    owner: root
+    group: wheel
+    mode: 0644
+
+
+- name: check keystone database persistant volume claim
+  command: kubectl -s http://munchlax:8080 get -f /tmp/keydb-claim.yaml -o json
+  register: keydb_claim_status
+  ignore_errors: yes
+
+
+- name: create persistant volume claim
+  command: kubectl create -f  /tmp/keydb-claim.yaml.j2 -o json
+  when:  keydb_claim_status|failed
+
+- name: copy service file
+  template: 
+    src: keystonedb-service.yaml.j2
+    dest: /tmp/keystonedb-service.yaml
+    owner: root
+    group: wheel
+    mode: 0644
+
+- name: check keystone database persistant volume claim
+  command: kubectl -s http://munchlax:8080 get -f /tmp/keystonedb-service.yaml -o json
+  register: service_status
+  ignore_errors: yes
+
+
+- name: create service
+  command: kubectl create -f  /tmp/keystonedb-service.yaml -o json
+  when:  service_status|failed
+
+- name: copy pod file
+  template: 
+    src: keystonedb-pod.yaml.j2
+    dest: /tmp/keystonedb-pod.yaml
+    owner: root
+    group: wheel
+    mode: 0644
+
+- name: check keystone database persistant volume claim
+  command: kubectl -s http://munchlax:8080 get -f /tmp/keystonedb-pod.yaml -o json
+  register: pod_status
+  ignore_errors: yes
+
+
+- name: create pod
+  command: kubectl create -f  /tmp/keystonedb-pod.yaml -o json
+  when:  pod_status|failed
