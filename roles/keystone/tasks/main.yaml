@@ -4,19 +4,14 @@
 # https://kubernetes.io/docs/user-guide/persistent-volumes/
 # applied to iSCSI
 
-
-
 - name: check namespace "openstack" exists
   command: kubectl -s http://munchlax:8080 get namespace openstack -o json
   register: namespace_status
   ignore_errors: yes
 
-
 - name: create namespace "openstack"
   command: kubectl create namespace openstack
   when:  namespace_status|failed
-
-
 
 - name: copy persistant volume definition to master
   template: 
