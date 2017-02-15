@@ -8,4 +8,4 @@
   remote_user: ansible
   sudo: yes
   roles:
-  - keystone
+  - storage
