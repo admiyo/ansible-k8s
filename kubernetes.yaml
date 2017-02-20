@@ -27,7 +27,7 @@
   roles:
   - master
 
-- hosts: all
+- hosts: nodes
   remote_user: ansible
   sudo: yes
   roles:

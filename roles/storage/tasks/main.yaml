@@ -3,13 +3,34 @@
 # Ansiblization of the instructions from
 # https://kubernetes.io/docs/user-guide/persistent-volumes/
 # applied to iSCSI
+# Also References the example from 
+# https://github.com/kubernetes/kubernetes/blob/master/examples/\
+#mysql-wordpress-pd/mysql-deployment.yaml
 
 - name: create kubernetes entities
   sudo: False
-  local_action: kubernetes insecure=yes api_endpoint=munchlax:8080 file_reference={{ role_path }}/files/{{ item }}.yaml state=present
+  local_action: command kubectl --kubeconfig=/tmp/munchlax/etc/kubernetes/admin.conf  create -f {{ role_path }}/files/{{ item }}.yaml
   with_items:
-     - openstack-namespace
-     - keystonedb-pv
-     - keystonedb-claim
-     - keystonedb-service
-     - keystonedb-pod
+#     - openstack-namespace
+#     - keystonedb-pv
+#     - keystonedb-claim
+#     - keystonedb-service
+      - keystonedb-deploy
+
+
+- name: copy deployment Spec
+  copy:
+    src: keystonedb-deploy.yaml
+    dest: /tmp
+  
+
+# Deployment is not a supported type in the Ansible Kubernetes task.
+- name: check keystone database deployment
+  command: kubectl get -f /tmp/keystonedb-deploy.yaml -o json
+  register: keystone_deploy_status
+  ignore_errors: yes
+
+- name: create deployment
+  sudo: False
+  local_action: command kubectl create -f /tmp/keystonedb-deploy.yaml
+  when:  keystone_deploy_status|failed

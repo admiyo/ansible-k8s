@@ -2,79 +2,76 @@
 # Ansibilization of master side of
 # https://kubernetes.io/docs/getting-started-guides/fedora/fedora_manual_config/
 
+
+-  command: sysctl -w net.bridge.bridge-nf-call-iptables=1
+-  command: sysctl -w net.bridge.bridge-nf-call-ip6tables=1
+
+- name: disable SELinux for now
+  selinux:
+    policy: targeted
+    state: permissive
+
+
+
+- name: add the repo that provides kubeadm
+  copy:
+    src: cloud.google.com.repo
+    dest: /etc/yum.repos.d/
+    owner: root
+    group: root
+    mode: 0644
+
 - name: ensure rpms are at the latest version
   package: name={{ item }} state=latest
   with_items:
-  - etcd
-  - kubernetes
   - python-firewall
-  - skydns
+  - kubeadm
+  - kubectl
+  - kubelet
 
-#TODO: Restore admission control to this line:
-#'"--admission-control=NamespaceLifecycle,NamespaceExists,SecurityContextDeny,ServiceAccount,LimitRanger,ResourceQuota"'}
 
-- name: configure k8s api server
-  lineinfile:
-    dest: /etc/kubernetes/apiserver
-    regexp: "^{{ item.key }}="
-    line:  "{{ item.key }}={{ item.line }}"
-    state: present
-  register: k8s_conf
+- name: ensure the required services were started
+  service:
+    name: "{{ item }}"
+    enabled: yes
+    state: started
   with_items:
-    - {key: 'KUBE_ADMISSION_CONTROL',
-       line: '"--admission-control=NamespaceLifecycle,NamespaceExists,SecurityContextDeny,LimitRanger,ResourceQuota"'}
-    - {key: 'KUBE_API_ADDRESS', line: '"--address=0.0.0.0"'}
-    - {key: "KUBE_API_ARGS", line: '"--service-account-key-file=/etc/kubernetes/serviceaccount.key"'}
- 
-- name: generate key for master
-  command: openssl genrsa -out /etc/kubernetes/serviceaccount.key 2048
+    - docker
+    - kubelet
 
-- name: configure etcd  master listening host
-  lineinfile:
-    dest: /etc/etcd/etcd.conf 
-    regexp: "^ETCD_LISTEN_CLIENT_URLS="
-    line: ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:2379"
-    state: present
-  register: etcdconf
 
 - firewalld:
     port: "{{ item }}/tcp"
     permanent: true
     state: enabled
   with_items:
-  - 8080
   - 6443
   - 53
-
-- name: start the etcd server
-  service:
-    name: "{{ item }}"
-    state: restarted
-  with_items:
-    - etcd
-  when: etcdconf.changed
+  - 5000
+  - 3306
+  - 6443
+  - 9898
+  - 10250
 
 
-- name: start the kubernetes API server
-  service:
-    name: "{{ item }}"
-    state: restarted
-  with_items:
-    - kube-apiserver
-    - kube-controller-manager
-    - kube-scheduler
-  when: k8s_conf.changed
+- name: check if Kuberenets is running
+  command: kubectl api-versions
+  register: kubeapi_status
+  ignore_errors: yes
 
-- name: ensure the kubernetes services were started 
-  service:
-    name: "{{ item }}"
-    enabled: yes
-    state: started
-  with_items:
-    - kube-apiserver
-    - kube-controller-manager
-    - kube-scheduler
-    - etcd
+- name: setup Kuberenetes
+  command: kubeadm init --pod-network-cidr=10.244.0.0/16 --token abcdef.1234567890123456 --use-kubernetes-version v1.4.5 --api-external-dns-names munchlax.home.younglogic.net
+  when: kubeapi_status|failed
+
+- name: install weave for networking
+  command: kubectl apply -f https://git.io/weave-kube
+
+- name: Allow scheduling pods on master
+  command: kubectl taint nodes --all dedicated- 
+  ignore_errors: yes
 
 
-
+- name: copy admin credentials to local machine
+  fetch:
+    src:  /etc/kubernetes/admin.conf
+    dest: /tmp/

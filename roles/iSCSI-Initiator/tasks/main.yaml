@@ -48,21 +48,3 @@
 - name: create file system
   command: mkfs.ext4 /dev/sdb1
   when: "'TYPE' not in sdb1_blkid.stdout"
-
-- name: copy persistant volume definition to master
-  template: 
-    src: keydb-pv.yaml.j2
-    dest: /tmp/keydb-pv.yaml
-    owner: root
-    group: wheel
-    mode: 0644
-
-- name: check keystone database persistant volume
-  command: kubectl -s http://munchlax:8080 get -f  /tmp/keydb-pv.yaml -o json
-  register: keydbpv_status
-  ignore_errors: yes
-
-
-- name: create persistant volume ReplicationController
-  command: kubectl create -f  /tmp/keydb-pv.yaml
-  when:  keydbpv_status|failed

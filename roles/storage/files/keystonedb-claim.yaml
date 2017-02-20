@@ -1,7 +1,7 @@
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: keydbclaim
+  name: keystonedb
   namespace: openstack
   annotations:
     volume.beta.kubernetes.io/storage-class: "slow"
@@ -13,4 +13,4 @@ spec:
       storage: 5Gi
   selector:
     matchLabels:
-      app: "keystone"
+      app: "keystonedb"

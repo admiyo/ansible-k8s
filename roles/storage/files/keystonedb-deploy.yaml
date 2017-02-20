@@ -1,0 +1,39 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: keystonedb
+  labels:
+    app: keystonedb
+  namespace: openstack
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: keystonedb
+        tier: mysql
+    spec:
+      containers:
+      - image:  mariadb:latest
+        name: mariadb
+        env:
+          # $ kubectl create secret generic mysql-pass --from-file=password.txt
+          # make sure password.txt does not have a trailing newline
+        - name: MYSQL_ROOT_PASSWORD
+          value: yourpassword
+
+          #valueFrom:
+          #  secretKeyRef:
+          #    name: mysql-pass
+          #    key: password.txt
+        ports:
+        - containerPort: 3306
+          name: mysql
+        volumeMounts:
+        - name: mysql-persistent-storage
+          mountPath: /var/lib/mysql
+      volumes:
+      - name: mysql-persistent-storage
+        persistentVolumeClaim:
+          claimName: keystonedb
+ 

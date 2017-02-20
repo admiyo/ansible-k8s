@@ -1,10 +1,25 @@
 ---
-- name: ensure kubernetes  is at the latest version
-  package: name=kubernetes-node state=latest
 
 - name: Make sure we can manage SELinux changes for lineinfile
   package: name=libselinux-python state=latest
-   
+
+- name: add the repo that provides kubeadm
+  copy:
+    src: cloud.google.com.repo
+    dest: /etc/yum.repos.d/
+    owner: root
+    group: root
+    mode: 0644
+
+- name: ensure rpms are at the latest version
+  package: name={{ item }} state=latest
+  with_items:
+  - docker
+  - python-firewall
+  - kubeadm
+  - kubectl
+  - kubelet
+
 - firewalld:
     port: "{{ item }}/tcp"
     permanent: true
@@ -13,38 +28,6 @@
   - 4194
   - 10250
   - 10255
-
-- name: configure k8s api server
-  lineinfile:
-    dest: /etc/kubernetes/kubelet
-    regexp: "^{{ item.key }}="
-    line:  "{{ item.key }}={{ item.line }}"
-    state: present
-  register: kubelet_conf
-  with_items:
-    - {key: 'KUBELET_ADDRESS',
-       line: '"--address=0.0.0.0"'}
-    - {key: 'KUBELET_HOSTNAME', line: '"--hostname-override={{ inventory_hostname }}"'}
-    - {key: "KUBELET_API_SERVER", line: '"--api-servers=http://munchlax:8080"'}
-    - {key: "KUBELET_ARGS", line: '"--cluster_dns=10.10.0.30 --cluster_domain=home.younglogic.net"'}
-
-- name: configure kubernetes API server
-  lineinfile:
-    dest: /etc/kubernetes/config
-    regexp: "^KUBELET_API_SERVER="  
-    line: KUBELET_API_SERVER="--api-servers=http://munchlax:8080"
-    state: present
-  register: kubeapi
-
-
-- name: restart the node services if required
-  service:
-    name: "{{ item }}"
-    state: restarted
-  with_items:
-    - kube-proxy
-    - kubelet
-  when: kubelet_conf.changed or kubeapi.changed
 
 
 - name: configure docker to allow insecure registry access
@@ -64,12 +47,14 @@
   when:  dockerinsecure.changed
 
 
-- name: start the node services
+- name: start the node services if required
   service:
     name: "{{ item }}"
     state: started
-    enabled: yes
+    enabled: true
   with_items:
-    - kube-proxy
     - kubelet
     - docker
+
+- name: enroll a kubernetes node
+  command: kubeadm join --token=abcdef.1234567890123456 10.0.0.30
